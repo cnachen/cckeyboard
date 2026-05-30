@@ -5,21 +5,23 @@ description = "`Hello, world!` in the embedded world"
 edition = "2021"
 keywords = ["embedded", "stm32f411"]
 license = "MIT"
-name = "stm32f4-blinky"
+name = "stm32f4-project"
 version = "0.1.1"
 
 [dependencies.stm32-hal2]
 version = "1.3"
-features = ["f411"]
+features = ["f411", "usbotg_fs"]
 
 [dependencies]
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
+usb-device = "0.3"
+usbd-hid = "0.10"
 
 [[bin]]
-name = "blinky"
-path = "src/inf.rs"
+name = "morse"
+path = "src/main.rs"
 test = false
 bench = false
 

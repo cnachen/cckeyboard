@@ -1,4 +1,4 @@
-TARGET = target/thumbv7em-none-eabi/release/blinky
+TARGET = target/thumbv7em-none-eabi/release/morse
 PREFIX = arm-none-eabi
 
 all: release bin hex
