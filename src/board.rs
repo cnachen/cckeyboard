@@ -11,6 +11,7 @@ const K2_PIN: u8 = 2;
 const K3_PIN: u8 = 3;
 const LED_PORT: Port = Port::C;
 const LED_PIN: u8 = 13;
+const USB_PORT: Port = Port::A;
 const USB_DM_PIN: u8 = 11;
 const USB_DP_PIN: u8 = 12;
 const USB_AF: u8 = 10;
@@ -52,12 +53,12 @@ pub fn init_keys() -> Keys {
 }
 
 pub fn init_usb_pins() {
-    let mut usb_dm = Pin::new(Port::A, USB_DM_PIN, PinMode::Alt(USB_AF));
+    let mut usb_dm = Pin::new(USB_PORT, USB_DM_PIN, PinMode::Alt(USB_AF));
     usb_dm.output_type(OutputType::PushPull);
     usb_dm.output_speed(OutputSpeed::VeryHigh);
     usb_dm.pull(Pull::Floating);
 
-    let mut usb_dp = Pin::new(Port::A, USB_DP_PIN, PinMode::Alt(USB_AF));
+    let mut usb_dp = Pin::new(USB_PORT, USB_DP_PIN, PinMode::Alt(USB_AF));
     usb_dp.output_type(OutputType::PushPull);
     usb_dp.output_speed(OutputSpeed::VeryHigh);
     usb_dp.pull(Pull::Floating);

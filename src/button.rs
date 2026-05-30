@@ -89,11 +89,14 @@ impl KeyScanner {
                 self.keys[index].raw_changed_ms = now_ms;
             }
 
-            if self.keys[index].stable_pressed == self.keys[index].raw_pressed {
+            if self.keys[index].stable_pressed == self.keys[index].raw_pressed
+            {
                 continue;
             }
 
-            if now_ms.saturating_sub(self.keys[index].raw_changed_ms) < DEBOUNCE_MS {
+            if now_ms.saturating_sub(self.keys[index].raw_changed_ms)
+                < DEBOUNCE_MS
+            {
                 continue;
             }
 
@@ -110,7 +113,11 @@ impl KeyScanner {
         None
     }
 
-    fn handle_press(&mut self, index: usize, now_ms: u32) -> Option<KeyAction> {
+    fn handle_press(
+        &mut self,
+        index: usize,
+        now_ms: u32,
+    ) -> Option<KeyAction> {
         let bit = key_bit(index);
         self.keys[index].pressed_ms = now_ms;
         self.keys[index].long_emitted = false;
@@ -187,7 +194,9 @@ impl KeyScanner {
 
         for index in 0..KEY_COUNT {
             let bit = key_bit(index);
-            if !self.keys[index].stable_pressed || self.keys[index].long_emitted {
+            if !self.keys[index].stable_pressed
+                || self.keys[index].long_emitted
+            {
                 continue;
             }
 
@@ -195,7 +204,9 @@ impl KeyScanner {
                 continue;
             }
 
-            if now_ms.saturating_sub(self.keys[index].pressed_ms) < LONG_PRESS_MS {
+            if now_ms.saturating_sub(self.keys[index].pressed_ms)
+                < LONG_PRESS_MS
+            {
                 continue;
             }
 

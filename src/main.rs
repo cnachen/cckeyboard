@@ -162,8 +162,12 @@ fn handle_action(
 
     if selector.active {
         match action {
-            KeyAction::Short(PhysicalKey::K1) => selector.push(SelectorToken::K1),
-            KeyAction::Short(PhysicalKey::K3) => selector.push(SelectorToken::K3),
+            KeyAction::Short(PhysicalKey::K1) => {
+                selector.push(SelectorToken::K1)
+            }
+            KeyAction::Short(PhysicalKey::K3) => {
+                selector.push(SelectorToken::K3)
+            }
             KeyAction::Short(PhysicalKey::K2) => {
                 *mode = selector.confirm();
                 indicate_mode(*mode, led, delay);
@@ -232,11 +236,7 @@ fn map_number_mode(action: KeyAction) -> Option<KeyStroke> {
     }
 }
 
-fn indicate_mode(
-    mode: Mode,
-    led: &mut hal::gpio::Pin,
-    delay: &mut Delay,
-) {
+fn indicate_mode(mode: Mode, led: &mut hal::gpio::Pin, delay: &mut Delay) {
     let blink_count = match mode {
         Mode::Default => 1,
         Mode::Media => 2,
@@ -254,6 +254,7 @@ fn indicate_mode(
 fn selector_token_eq(lhs: SelectorToken, rhs: SelectorToken) -> bool {
     matches!(
         (lhs, rhs),
-        (SelectorToken::K1, SelectorToken::K1) | (SelectorToken::K3, SelectorToken::K3)
+        (SelectorToken::K1, SelectorToken::K1)
+            | (SelectorToken::K3, SelectorToken::K3)
     )
 }
