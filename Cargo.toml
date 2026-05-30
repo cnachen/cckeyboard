@@ -5,7 +5,7 @@ description = "`Hello, world!` in the embedded world"
 edition = "2021"
 keywords = ["embedded", "stm32f411"]
 license = "MIT"
-name = "stm32f4-project"
+name = "cckeyboard-project"
 version = "0.1.1"
 
 [dependencies.stm32-hal2]
@@ -20,7 +20,7 @@ usb-device = "0.3"
 usbd-hid = "0.10"
 
 [[bin]]
-name = "morse"
+name = "cckeyboard"
 path = "src/main.rs"
 test = false
 bench = false

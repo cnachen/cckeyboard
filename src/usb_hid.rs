@@ -16,6 +16,47 @@ const USB_PID: u16 = 0x4110;
 const USB_POLL_MS: u8 = 1;
 const HID_RELEASE_MS: u32 = 12;
 
+#[derive(Clone, Copy)]
+pub struct KeyStroke {
+    modifier: u8,
+    keycode: u8,
+}
+
+impl KeyStroke {
+    pub const fn new(keycode: u8) -> Self {
+        Self {
+            modifier: 0,
+            keycode,
+        }
+    }
+}
+
+pub const KEY_LEFT: KeyStroke = KeyStroke::new(0x50);
+pub const KEY_RIGHT: KeyStroke = KeyStroke::new(0x4f);
+pub const KEY_UP: KeyStroke = KeyStroke::new(0x52);
+pub const KEY_DOWN: KeyStroke = KeyStroke::new(0x51);
+pub const KEY_ENTER: KeyStroke = KeyStroke::new(0x28);
+pub const KEY_ESC: KeyStroke = KeyStroke::new(0x29);
+pub const KEY_SPACE: KeyStroke = KeyStroke::new(0x2c);
+pub const KEY_HOME: KeyStroke = KeyStroke::new(0x4a);
+pub const KEY_END: KeyStroke = KeyStroke::new(0x4d);
+pub const KEY_0: KeyStroke = KeyStroke::new(0x27);
+pub const KEY_1: KeyStroke = KeyStroke::new(0x1e);
+pub const KEY_2: KeyStroke = KeyStroke::new(0x1f);
+pub const KEY_3: KeyStroke = KeyStroke::new(0x20);
+pub const KEY_4: KeyStroke = KeyStroke::new(0x21);
+pub const KEY_5: KeyStroke = KeyStroke::new(0x22);
+pub const KEY_6: KeyStroke = KeyStroke::new(0x23);
+pub const KEY_7: KeyStroke = KeyStroke::new(0x24);
+pub const KEY_8: KeyStroke = KeyStroke::new(0x25);
+pub const KEY_9: KeyStroke = KeyStroke::new(0x26);
+pub const KEY_F7: KeyStroke = KeyStroke::new(0x40);
+pub const KEY_F8: KeyStroke = KeyStroke::new(0x41);
+pub const KEY_F9: KeyStroke = KeyStroke::new(0x42);
+pub const KEY_F10: KeyStroke = KeyStroke::new(0x43);
+pub const KEY_F11: KeyStroke = KeyStroke::new(0x44);
+pub const KEY_F12: KeyStroke = KeyStroke::new(0x45);
+
 pub struct UsbKeyboard<'a> {
     usb_dev: UsbDevice<'a, Usb1BusType>,
     hid: HIDClass<'a, Usb1BusType>,
@@ -41,7 +82,7 @@ impl<'a> UsbKeyboard<'a> {
             UsbDeviceBuilder::new(usb_bus, UsbVidPid(USB_VID, USB_PID))
                 .strings(&[StringDescriptors::default()
                     .manufacturer("Cnachen")
-                    .product("Black Pill Morse Keyboard")
+                    .product("Claude Code Keyboard")
                     .serial_number("0001")])
                 .unwrap()
                 .device_class(0)
@@ -76,11 +117,9 @@ impl<'a> UsbKeyboard<'a> {
         let _ = self.usb_dev.poll(&mut [&mut self.hid]);
     }
 
-    pub fn send_ascii(&mut self, ch: char, delay: &mut Delay) {
-        if let Some(report) = ascii_to_report(ch) {
-            self.push_report(&report, delay);
-            self.push_report(&KeyboardReport::default(), delay);
-        }
+    pub fn send_keystroke(&mut self, key: KeyStroke, delay: &mut Delay) {
+        self.push_report(&key.to_report(), delay);
+        self.push_report(&KeyboardReport::default(), delay);
     }
 
     fn push_report(&mut self, report: &KeyboardReport, delay: &mut Delay) {
@@ -97,20 +136,13 @@ impl<'a> UsbKeyboard<'a> {
     }
 }
 
-fn ascii_to_report(ch: char) -> Option<KeyboardReport> {
-    let (modifier, keycode) = match ch {
-        'a'..='z' => (0x00, 0x04 + (ch as u8 - b'a')),
-        'A'..='Z' => (0x02, 0x04 + (ch as u8 - b'A')),
-        '1'..='9' => (0x00, 0x1e + (ch as u8 - b'1')),
-        '0' => (0x00, 0x27),
-        ' ' => (0x00, 0x2c),
-        _ => return None,
-    };
-
-    Some(KeyboardReport {
-        modifier,
-        reserved: 0,
-        leds: 0,
-        keycodes: [keycode, 0, 0, 0, 0, 0],
-    })
+impl KeyStroke {
+    fn to_report(self) -> KeyboardReport {
+        KeyboardReport {
+            modifier: self.modifier,
+            reserved: 0,
+            leds: 0,
+            keycodes: [self.keycode, 0, 0, 0, 0, 0],
+        }
+    }
 }

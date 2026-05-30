@@ -1,16 +1,17 @@
-TARGET = target/thumbv7em-none-eabi/release/morse
+TARGET = target/thumbv7em-none-eabi/release/cckeyboard
 PREFIX = arm-none-eabi
 
-all: release bin hex
+all: bin hex
 
 release:
 	cargo build --release
 
-debug: bin hex
+debug:
 	cargo build
 
 bin: release
 	$(PREFIX)-objcopy $(TARGET) -O binary target/firmware.bin
+	@chmod a-x target/firmware.bin
 
 hex: release
 	$(PREFIX)-objcopy $(TARGET) -O ihex target/firmware.hex

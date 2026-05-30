@@ -6,7 +6,9 @@ use hal::clocks::{
 use hal::gpio::{OutputSpeed, OutputType, Pin, PinMode, Port, Pull};
 
 const KEY_PORT: Port = Port::A;
-const KEY_PIN: u8 = 0;
+const K1_PIN: u8 = 1;
+const K2_PIN: u8 = 2;
+const K3_PIN: u8 = 3;
 const LED_PORT: Port = Port::C;
 const LED_PIN: u8 = 13;
 const USB_DM_PIN: u8 = 11;
@@ -35,10 +37,18 @@ pub fn init_led() -> Pin {
     led
 }
 
-pub fn init_key() -> Pin {
-    let mut key = Pin::new(KEY_PORT, KEY_PIN, PinMode::Input);
-    key.pull(Pull::Up);
-    key
+pub struct Keys {
+    pub k1: Pin,
+    pub k2: Pin,
+    pub k3: Pin,
+}
+
+pub fn init_keys() -> Keys {
+    Keys {
+        k1: init_key(K1_PIN),
+        k2: init_key(K2_PIN),
+        k3: init_key(K3_PIN),
+    }
 }
 
 pub fn init_usb_pins() {
@@ -51,4 +61,10 @@ pub fn init_usb_pins() {
     usb_dp.output_type(OutputType::PushPull);
     usb_dp.output_speed(OutputSpeed::VeryHigh);
     usb_dp.pull(Pull::Floating);
+}
+
+fn init_key(pin_num: u8) -> Pin {
+    let mut key = Pin::new(KEY_PORT, pin_num, PinMode::Input);
+    key.pull(Pull::Up);
+    key
 }
