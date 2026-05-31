@@ -134,6 +134,10 @@ impl<'a> UsbKeyboard<'a> {
     }
 
     pub fn send_keystroke(&mut self, key: KeyStroke, delay: &mut Delay) {
+        if key.modifier != 0 {
+            self.push_report(&key.modifier_report(), delay);
+        }
+
         self.push_report(&key.to_report(), delay);
         self.push_report(&KeyboardReport::default(), delay);
     }
@@ -153,6 +157,15 @@ impl<'a> UsbKeyboard<'a> {
 }
 
 impl KeyStroke {
+    fn modifier_report(self) -> KeyboardReport {
+        KeyboardReport {
+            modifier: self.modifier,
+            reserved: 0,
+            leds: 0,
+            keycodes: [0, 0, 0, 0, 0, 0],
+        }
+    }
+
     fn to_report(self) -> KeyboardReport {
         KeyboardReport {
             modifier: self.modifier,
