@@ -14,12 +14,18 @@ mod usb_hid;
 
 use button::{KeyAction, KeyScanner, PhysicalKey};
 use usb_hid::{
-    KeyStroke, UsbKeyboard, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6,
-    KEY_7, KEY_8, KEY_9, KEY_A, KEY_ASTERISK, KEY_CAPITAL_A, KEY_CAPITAL_I,
-    KEY_DOT, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESC, KEY_F10, KEY_F11, KEY_F12,
-    KEY_F7, KEY_F8, KEY_F9, KEY_HASH, KEY_HOME, KEY_I, KEY_LEFT, KEY_PERCENT,
-    KEY_RIGHT, KEY_SPACE, KEY_UP,
+    KeyStroke, MediaStroke, UsbKeyboard, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4,
+    KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_A, KEY_ASTERISK, KEY_CAPITAL_A,
+    KEY_CAPITAL_I, KEY_DOT, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESC, KEY_HASH,
+    KEY_HOME, KEY_I, KEY_LEFT, KEY_PERCENT, KEY_RIGHT, KEY_SPACE, KEY_UP,
+    MEDIA_PLAY_PAUSE, MEDIA_TRACK_NEXT, MEDIA_TRACK_PREVIOUS,
+    MEDIA_VOLUME_DOWN, MEDIA_VOLUME_MUTE, MEDIA_VOLUME_UP,
 };
+
+enum Stroke {
+    Key(KeyStroke),
+    Media(MediaStroke),
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
@@ -172,11 +178,14 @@ fn handle_action(
     }
 
     if let Some(stroke) = map_action(*mode, action) {
-        keyboard.send_keystroke(stroke, delay);
+        match stroke {
+            Stroke::Key(key) => keyboard.send_keystroke(key, delay),
+            Stroke::Media(key) => keyboard.send_media_stroke(key, delay),
+        }
     }
 }
 
-fn map_action(mode: Mode, action: KeyAction) -> Option<KeyStroke> {
+fn map_action(mode: Mode, action: KeyAction) -> Option<Stroke> {
     match mode {
         Mode::Vim => map_vim_mode(action),
         Mode::Number => map_number_mode(action),
@@ -185,67 +194,90 @@ fn map_action(mode: Mode, action: KeyAction) -> Option<KeyStroke> {
     }
 }
 
-fn map_vim_mode(action: KeyAction) -> Option<KeyStroke> {
+fn map_vim_mode(action: KeyAction) -> Option<Stroke> {
     match action {
-        KeyAction::Short(PhysicalKey::K1) => Some(KEY_I),
-        KeyAction::Long(PhysicalKey::K1) => Some(KEY_CAPITAL_I),
-        KeyAction::Short(PhysicalKey::K2) => Some(KEY_ESC),
-        KeyAction::Long(PhysicalKey::K2) => Some(KEY_DOT),
-        KeyAction::Short(PhysicalKey::K3) => Some(KEY_A),
-        KeyAction::Long(PhysicalKey::K3) => Some(KEY_CAPITAL_A),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_HASH),
+        KeyAction::Short(PhysicalKey::K1) => Some(Stroke::Key(KEY_I)),
+        KeyAction::Long(PhysicalKey::K1) => Some(Stroke::Key(KEY_CAPITAL_I)),
+        KeyAction::Short(PhysicalKey::K2) => Some(Stroke::Key(KEY_ESC)),
+        KeyAction::Long(PhysicalKey::K2) => Some(Stroke::Key(KEY_DOT)),
+        KeyAction::Short(PhysicalKey::K3) => Some(Stroke::Key(KEY_A)),
+        KeyAction::Long(PhysicalKey::K3) => Some(Stroke::Key(KEY_CAPITAL_A)),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => {
+            Some(Stroke::Key(KEY_HASH))
+        }
         KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => {
-            Some(KEY_PERCENT)
+            Some(Stroke::Key(KEY_PERCENT))
         }
         KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => {
-            Some(KEY_ASTERISK)
+            Some(Stroke::Key(KEY_ASTERISK))
         }
         _ => None,
     }
 }
 
-fn map_number_mode(action: KeyAction) -> Option<KeyStroke> {
+fn map_number_mode(action: KeyAction) -> Option<Stroke> {
     match action {
-        KeyAction::Short(PhysicalKey::K1) => Some(KEY_1),
-        KeyAction::Long(PhysicalKey::K1) => Some(KEY_4),
-        KeyAction::Short(PhysicalKey::K2) => Some(KEY_2),
-        KeyAction::Long(PhysicalKey::K2) => Some(KEY_5),
-        KeyAction::Short(PhysicalKey::K3) => Some(KEY_3),
-        KeyAction::Long(PhysicalKey::K3) => Some(KEY_6),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_7),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => Some(KEY_8),
-        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => Some(KEY_9),
-        KeyAction::Chord3 => Some(KEY_0),
+        KeyAction::Short(PhysicalKey::K1) => Some(Stroke::Key(KEY_1)),
+        KeyAction::Long(PhysicalKey::K1) => Some(Stroke::Key(KEY_4)),
+        KeyAction::Short(PhysicalKey::K2) => Some(Stroke::Key(KEY_2)),
+        KeyAction::Long(PhysicalKey::K2) => Some(Stroke::Key(KEY_5)),
+        KeyAction::Short(PhysicalKey::K3) => Some(Stroke::Key(KEY_3)),
+        KeyAction::Long(PhysicalKey::K3) => Some(Stroke::Key(KEY_6)),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => {
+            Some(Stroke::Key(KEY_7))
+        }
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => {
+            Some(Stroke::Key(KEY_8))
+        }
+        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => {
+            Some(Stroke::Key(KEY_9))
+        }
+        KeyAction::Chord3 => Some(Stroke::Key(KEY_0)),
         _ => None,
     }
 }
 
-fn map_navigation_mode(action: KeyAction) -> Option<KeyStroke> {
+fn map_navigation_mode(action: KeyAction) -> Option<Stroke> {
     match action {
-        KeyAction::Short(PhysicalKey::K1) => Some(KEY_LEFT),
-        KeyAction::Long(PhysicalKey::K1) => Some(KEY_HOME),
-        KeyAction::Short(PhysicalKey::K2) => Some(KEY_ENTER),
-        KeyAction::Long(PhysicalKey::K2) => Some(KEY_ESC),
-        KeyAction::Short(PhysicalKey::K3) => Some(KEY_RIGHT),
-        KeyAction::Long(PhysicalKey::K3) => Some(KEY_END),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_UP),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => Some(KEY_SPACE),
-        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => Some(KEY_DOWN),
+        KeyAction::Short(PhysicalKey::K1) => Some(Stroke::Key(KEY_LEFT)),
+        KeyAction::Long(PhysicalKey::K1) => Some(Stroke::Key(KEY_HOME)),
+        KeyAction::Short(PhysicalKey::K2) => Some(Stroke::Key(KEY_ENTER)),
+        KeyAction::Long(PhysicalKey::K2) => Some(Stroke::Key(KEY_ESC)),
+        KeyAction::Short(PhysicalKey::K3) => Some(Stroke::Key(KEY_RIGHT)),
+        KeyAction::Long(PhysicalKey::K3) => Some(Stroke::Key(KEY_END)),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => {
+            Some(Stroke::Key(KEY_UP))
+        }
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => {
+            Some(Stroke::Key(KEY_SPACE))
+        }
+        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => {
+            Some(Stroke::Key(KEY_DOWN))
+        }
         _ => None,
     }
 }
 
-fn map_media_mode(action: KeyAction) -> Option<KeyStroke> {
+fn map_media_mode(action: KeyAction) -> Option<Stroke> {
     match action {
-        KeyAction::Short(PhysicalKey::K1) => Some(KEY_F7),
-        KeyAction::Long(PhysicalKey::K1) => Some(KEY_F10),
-        KeyAction::Short(PhysicalKey::K2) => Some(KEY_F8),
-        KeyAction::Long(PhysicalKey::K2) => Some(KEY_F11),
-        KeyAction::Short(PhysicalKey::K3) => Some(KEY_F9),
-        KeyAction::Long(PhysicalKey::K3) => Some(KEY_F12),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_HOME),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => Some(KEY_SPACE),
-        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => Some(KEY_END),
+        KeyAction::Short(PhysicalKey::K1) => {
+            Some(Stroke::Media(MEDIA_TRACK_PREVIOUS))
+        }
+        KeyAction::Short(PhysicalKey::K2) => {
+            Some(Stroke::Media(MEDIA_PLAY_PAUSE))
+        }
+        KeyAction::Short(PhysicalKey::K3) => {
+            Some(Stroke::Media(MEDIA_TRACK_NEXT))
+        }
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => {
+            Some(Stroke::Media(MEDIA_VOLUME_DOWN))
+        }
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => {
+            Some(Stroke::Media(MEDIA_VOLUME_MUTE))
+        }
+        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => {
+            Some(Stroke::Media(MEDIA_VOLUME_UP))
+        }
         _ => None,
     }
 }

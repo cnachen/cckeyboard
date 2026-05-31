@@ -3,7 +3,9 @@ use stm32_hal2 as hal;
 use usb_device::device::{
     StringDescriptors, UsbDevice, UsbDeviceBuilder, UsbVidPid,
 };
-use usbd_hid::descriptor::{KeyboardReport, SerializedDescriptor};
+use usbd_hid::descriptor::{
+    KeyboardReport, MediaKeyboardReport, SerializedDescriptor,
+};
 use usbd_hid::hid_class::{
     HIDClass, HidClassSettings, HidProtocol, HidSubClass, ProtocolModeConfig,
 };
@@ -22,6 +24,11 @@ pub struct KeyStroke {
     keycode: u8,
 }
 
+#[derive(Clone, Copy)]
+pub struct MediaStroke {
+    usage_id: u16,
+}
+
 impl KeyStroke {
     pub const fn new(keycode: u8) -> Self {
         Self {
@@ -32,6 +39,12 @@ impl KeyStroke {
 
     pub const fn with_modifier(modifier: u8, keycode: u8) -> Self {
         Self { modifier, keycode }
+    }
+}
+
+impl MediaStroke {
+    pub const fn new(usage_id: u16) -> Self {
+        Self { usage_id }
     }
 }
 
@@ -57,12 +70,6 @@ pub const KEY_7: KeyStroke = KeyStroke::new(0x24);
 pub const KEY_8: KeyStroke = KeyStroke::new(0x25);
 pub const KEY_9: KeyStroke = KeyStroke::new(0x26);
 pub const KEY_DOT: KeyStroke = KeyStroke::new(0x37);
-pub const KEY_F7: KeyStroke = KeyStroke::new(0x40);
-pub const KEY_F8: KeyStroke = KeyStroke::new(0x41);
-pub const KEY_F9: KeyStroke = KeyStroke::new(0x42);
-pub const KEY_F10: KeyStroke = KeyStroke::new(0x43);
-pub const KEY_F11: KeyStroke = KeyStroke::new(0x44);
-pub const KEY_F12: KeyStroke = KeyStroke::new(0x45);
 pub const KEY_A: KeyStroke = KeyStroke::new(0x04);
 pub const KEY_CAPITAL_A: KeyStroke =
     KeyStroke::with_modifier(MOD_LSHIFT, 0x04);
@@ -72,17 +79,24 @@ pub const KEY_CAPITAL_I: KeyStroke =
 pub const KEY_HASH: KeyStroke = KeyStroke::with_modifier(MOD_LSHIFT, 0x20);
 pub const KEY_PERCENT: KeyStroke = KeyStroke::with_modifier(MOD_LSHIFT, 0x22);
 pub const KEY_ASTERISK: KeyStroke = KeyStroke::with_modifier(MOD_LSHIFT, 0x25);
+pub const MEDIA_PLAY_PAUSE: MediaStroke = MediaStroke::new(0x00cd);
+pub const MEDIA_TRACK_PREVIOUS: MediaStroke = MediaStroke::new(0x00b6);
+pub const MEDIA_TRACK_NEXT: MediaStroke = MediaStroke::new(0x00b5);
+pub const MEDIA_VOLUME_UP: MediaStroke = MediaStroke::new(0x00e9);
+pub const MEDIA_VOLUME_DOWN: MediaStroke = MediaStroke::new(0x00ea);
+pub const MEDIA_VOLUME_MUTE: MediaStroke = MediaStroke::new(0x00e2);
 
 pub struct UsbKeyboard<'a> {
     usb_dev: UsbDevice<'a, Usb1BusType>,
-    hid: HIDClass<'a, Usb1BusType>,
+    keyboard_hid: HIDClass<'a, Usb1BusType>,
+    media_hid: HIDClass<'a, Usb1BusType>,
 }
 
 impl<'a> UsbKeyboard<'a> {
     pub fn new(
         usb_bus: &'a usb_device::bus::UsbBusAllocator<Usb1BusType>,
     ) -> Self {
-        let hid = HIDClass::new_ep_in_with_settings(
+        let keyboard_hid = HIDClass::new_ep_in_with_settings(
             usb_bus,
             KeyboardReport::desc(),
             USB_POLL_MS,
@@ -90,6 +104,17 @@ impl<'a> UsbKeyboard<'a> {
                 subclass: HidSubClass::Boot,
                 protocol: HidProtocol::Keyboard,
                 config: ProtocolModeConfig::ForceBoot,
+                ..Default::default()
+            },
+        );
+        let media_hid = HIDClass::new_ep_in_with_settings(
+            usb_bus,
+            MediaKeyboardReport::desc(),
+            USB_POLL_MS,
+            HidClassSettings {
+                subclass: HidSubClass::NoSubClass,
+                protocol: HidProtocol::Generic,
+                config: ProtocolModeConfig::DefaultBehavior,
                 ..Default::default()
             },
         );
@@ -104,7 +129,11 @@ impl<'a> UsbKeyboard<'a> {
                 .device_class(0)
                 .build();
 
-        Self { usb_dev, hid }
+        Self {
+            usb_dev,
+            keyboard_hid,
+            media_hid,
+        }
     }
 
     pub fn new_bus(
@@ -130,22 +159,50 @@ impl<'a> UsbKeyboard<'a> {
     }
 
     pub fn poll(&mut self) {
-        let _ = self.usb_dev.poll(&mut [&mut self.hid]);
+        let _ = self
+            .usb_dev
+            .poll(&mut [&mut self.keyboard_hid, &mut self.media_hid]);
     }
 
     pub fn send_keystroke(&mut self, key: KeyStroke, delay: &mut Delay) {
         if key.modifier != 0 {
-            self.push_report(&key.modifier_report(), delay);
+            self.push_keyboard_report(&key.modifier_report(), delay);
         }
 
-        self.push_report(&key.to_report(), delay);
-        self.push_report(&KeyboardReport::default(), delay);
+        self.push_keyboard_report(&key.to_report(), delay);
+        self.push_keyboard_report(&KeyboardReport::default(), delay);
     }
 
-    fn push_report(&mut self, report: &KeyboardReport, delay: &mut Delay) {
+    pub fn send_media_stroke(&mut self, key: MediaStroke, delay: &mut Delay) {
+        self.push_media_report(&key.to_report(), delay);
+        self.push_media_report(&MediaKeyboardReport { usage_id: 0 }, delay);
+    }
+
+    fn push_keyboard_report(
+        &mut self,
+        report: &KeyboardReport,
+        delay: &mut Delay,
+    ) {
         for _ in 0..64 {
             self.poll();
-            if self.hid.push_input(report).is_ok() {
+            if self.keyboard_hid.push_input(report).is_ok() {
+                break;
+            }
+
+            delay.delay_ms(1);
+        }
+
+        delay.delay_ms(HID_RELEASE_MS);
+    }
+
+    fn push_media_report(
+        &mut self,
+        report: &MediaKeyboardReport,
+        delay: &mut Delay,
+    ) {
+        for _ in 0..64 {
+            self.poll();
+            if self.media_hid.push_input(report).is_ok() {
                 break;
             }
 
@@ -172,6 +229,14 @@ impl KeyStroke {
             reserved: 0,
             leds: 0,
             keycodes: [self.keycode, 0, 0, 0, 0, 0],
+        }
+    }
+}
+
+impl MediaStroke {
+    fn to_report(self) -> MediaKeyboardReport {
+        MediaKeyboardReport {
+            usage_id: self.usage_id,
         }
     }
 }
