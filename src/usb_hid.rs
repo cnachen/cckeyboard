@@ -29,7 +29,13 @@ impl KeyStroke {
             keycode,
         }
     }
+
+    pub const fn with_modifier(modifier: u8, keycode: u8) -> Self {
+        Self { modifier, keycode }
+    }
 }
+
+const MOD_LSHIFT: u8 = 0x02;
 
 pub const KEY_LEFT: KeyStroke = KeyStroke::new(0x50);
 pub const KEY_RIGHT: KeyStroke = KeyStroke::new(0x4f);
@@ -50,12 +56,22 @@ pub const KEY_6: KeyStroke = KeyStroke::new(0x23);
 pub const KEY_7: KeyStroke = KeyStroke::new(0x24);
 pub const KEY_8: KeyStroke = KeyStroke::new(0x25);
 pub const KEY_9: KeyStroke = KeyStroke::new(0x26);
+pub const KEY_DOT: KeyStroke = KeyStroke::new(0x37);
 pub const KEY_F7: KeyStroke = KeyStroke::new(0x40);
 pub const KEY_F8: KeyStroke = KeyStroke::new(0x41);
 pub const KEY_F9: KeyStroke = KeyStroke::new(0x42);
 pub const KEY_F10: KeyStroke = KeyStroke::new(0x43);
 pub const KEY_F11: KeyStroke = KeyStroke::new(0x44);
 pub const KEY_F12: KeyStroke = KeyStroke::new(0x45);
+pub const KEY_A: KeyStroke = KeyStroke::new(0x04);
+pub const KEY_CAPITAL_A: KeyStroke =
+    KeyStroke::with_modifier(MOD_LSHIFT, 0x04);
+pub const KEY_I: KeyStroke = KeyStroke::new(0x0c);
+pub const KEY_CAPITAL_I: KeyStroke =
+    KeyStroke::with_modifier(MOD_LSHIFT, 0x0c);
+pub const KEY_HASH: KeyStroke = KeyStroke::with_modifier(MOD_LSHIFT, 0x20);
+pub const KEY_PERCENT: KeyStroke = KeyStroke::with_modifier(MOD_LSHIFT, 0x22);
+pub const KEY_ASTERISK: KeyStroke = KeyStroke::with_modifier(MOD_LSHIFT, 0x25);
 
 pub struct UsbKeyboard<'a> {
     usb_dev: UsbDevice<'a, Usb1BusType>,

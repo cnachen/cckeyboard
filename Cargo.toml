@@ -6,7 +6,7 @@ edition = "2021"
 keywords = ["embedded", "stm32f411"]
 license = "MIT"
 name = "cckeyboard-project"
-version = "0.1.1"
+version = "0.1.2"
 
 [dependencies.stm32-hal2]
 version = "1.3"

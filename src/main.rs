@@ -15,16 +15,18 @@ mod usb_hid;
 use button::{KeyAction, KeyScanner, PhysicalKey};
 use usb_hid::{
     KeyStroke, UsbKeyboard, KEY_0, KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6,
-    KEY_7, KEY_8, KEY_9, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESC, KEY_F10,
-    KEY_F11, KEY_F12, KEY_F7, KEY_F8, KEY_F9, KEY_HOME, KEY_LEFT, KEY_RIGHT,
-    KEY_SPACE, KEY_UP,
+    KEY_7, KEY_8, KEY_9, KEY_A, KEY_ASTERISK, KEY_CAPITAL_A, KEY_CAPITAL_I,
+    KEY_DOT, KEY_DOWN, KEY_END, KEY_ENTER, KEY_ESC, KEY_F10, KEY_F11, KEY_F12,
+    KEY_F7, KEY_F8, KEY_F9, KEY_HASH, KEY_HOME, KEY_I, KEY_LEFT, KEY_PERCENT,
+    KEY_RIGHT, KEY_SPACE, KEY_UP,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Mode {
-    Default,
-    Media,
+    Vim,
     Number,
+    Navigation,
+    Media,
 }
 
 #[derive(Clone, Copy)]
@@ -63,22 +65,14 @@ impl ModeSelector {
     fn confirm(&mut self) -> Mode {
         self.active = false;
 
-        let mode = if self.matches(&[
-            SelectorToken::K1,
-            SelectorToken::K3,
-            SelectorToken::K1,
-            SelectorToken::K3,
-        ]) {
-            Mode::Media
-        } else if self.matches(&[
-            SelectorToken::K1,
-            SelectorToken::K1,
-            SelectorToken::K3,
-            SelectorToken::K3,
-        ]) {
+        let mode = if self.matches(&[SelectorToken::K1]) {
             Mode::Number
+        } else if self.matches(&[SelectorToken::K3]) {
+            Mode::Navigation
+        } else if self.matches(&[SelectorToken::K1, SelectorToken::K3]) {
+            Mode::Media
         } else {
-            Mode::Default
+            Mode::Vim
         };
 
         self.len = 0;
@@ -121,7 +115,7 @@ fn main() -> ! {
 
     let mut scanner = KeyScanner::new();
     let mut selector = ModeSelector::new();
-    let mut mode = Mode::Default;
+    let mut mode = Mode::Vim;
     let mut elapsed_ms = 0_u32;
 
     loop {
@@ -184,13 +178,49 @@ fn handle_action(
 
 fn map_action(mode: Mode, action: KeyAction) -> Option<KeyStroke> {
     match mode {
-        Mode::Default => map_default_mode(action),
-        Mode::Media => map_media_mode(action),
+        Mode::Vim => map_vim_mode(action),
         Mode::Number => map_number_mode(action),
+        Mode::Navigation => map_navigation_mode(action),
+        Mode::Media => map_media_mode(action),
     }
 }
 
-fn map_default_mode(action: KeyAction) -> Option<KeyStroke> {
+fn map_vim_mode(action: KeyAction) -> Option<KeyStroke> {
+    match action {
+        KeyAction::Short(PhysicalKey::K1) => Some(KEY_I),
+        KeyAction::Long(PhysicalKey::K1) => Some(KEY_CAPITAL_I),
+        KeyAction::Short(PhysicalKey::K2) => Some(KEY_ESC),
+        KeyAction::Long(PhysicalKey::K2) => Some(KEY_DOT),
+        KeyAction::Short(PhysicalKey::K3) => Some(KEY_A),
+        KeyAction::Long(PhysicalKey::K3) => Some(KEY_CAPITAL_A),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_HASH),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => {
+            Some(KEY_PERCENT)
+        }
+        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => {
+            Some(KEY_ASTERISK)
+        }
+        _ => None,
+    }
+}
+
+fn map_number_mode(action: KeyAction) -> Option<KeyStroke> {
+    match action {
+        KeyAction::Short(PhysicalKey::K1) => Some(KEY_1),
+        KeyAction::Long(PhysicalKey::K1) => Some(KEY_4),
+        KeyAction::Short(PhysicalKey::K2) => Some(KEY_2),
+        KeyAction::Long(PhysicalKey::K2) => Some(KEY_5),
+        KeyAction::Short(PhysicalKey::K3) => Some(KEY_3),
+        KeyAction::Long(PhysicalKey::K3) => Some(KEY_6),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_7),
+        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => Some(KEY_8),
+        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => Some(KEY_9),
+        KeyAction::Chord3 => Some(KEY_0),
+        _ => None,
+    }
+}
+
+fn map_navigation_mode(action: KeyAction) -> Option<KeyStroke> {
     match action {
         KeyAction::Short(PhysicalKey::K1) => Some(KEY_LEFT),
         KeyAction::Long(PhysicalKey::K1) => Some(KEY_HOME),
@@ -220,27 +250,11 @@ fn map_media_mode(action: KeyAction) -> Option<KeyStroke> {
     }
 }
 
-fn map_number_mode(action: KeyAction) -> Option<KeyStroke> {
-    match action {
-        KeyAction::Short(PhysicalKey::K1) => Some(KEY_1),
-        KeyAction::Long(PhysicalKey::K1) => Some(KEY_4),
-        KeyAction::Short(PhysicalKey::K2) => Some(KEY_2),
-        KeyAction::Long(PhysicalKey::K2) => Some(KEY_5),
-        KeyAction::Short(PhysicalKey::K3) => Some(KEY_3),
-        KeyAction::Long(PhysicalKey::K3) => Some(KEY_6),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K2) => Some(KEY_7),
-        KeyAction::Chord2(PhysicalKey::K1, PhysicalKey::K3) => Some(KEY_8),
-        KeyAction::Chord2(PhysicalKey::K2, PhysicalKey::K3) => Some(KEY_9),
-        KeyAction::Chord3 => Some(KEY_0),
-        _ => None,
-    }
-}
-
 fn indicate_mode(mode: Mode, led: &mut hal::gpio::Pin, delay: &mut Delay) {
     let blink_count = match mode {
-        Mode::Default => 1,
-        Mode::Media => 2,
-        Mode::Number => 3,
+        Mode::Vim => 1,
+        Mode::Number | Mode::Navigation => 2,
+        Mode::Media => 3,
     };
 
     for _ in 0..blink_count {
